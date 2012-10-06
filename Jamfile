@@ -1,0 +1,7 @@
+CC = gcc ;
+LINK = $(CC) ;
+
+CCFLAGS = -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -std=c99 -O2 -Wall ;
+LINKFLAGS = -L/opt/vc/lib -lEGL -lGLESv1_CM ;
+
+Main main : main.c ;

@@ -18,8 +18,8 @@
    #define M_PI 3.141592654
 #endif
 	
-static const int u_sections = 64;
-static const int v_sections = 64;
+static const int u_sections = 40;
+static const int v_sections = 32;
 
 typedef struct
 {
@@ -52,7 +52,7 @@ static void exit_func(void);
 static volatile int terminate;
 static CUBE_STATE_T _state, *state=&_state;
 
-static GLfloat *vertices;
+static vec3 *vertices;
 
 
 /***********************************************************
@@ -142,7 +142,7 @@ static void init_ogl(CUBE_STATE_T *state)
    assert(EGL_FALSE != result);
 
    // Set background color and clear buffers
-   glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+   glClearColor(0.f, 0.f, 0.f, 1.0f);
    glClear( GL_COLOR_BUFFER_BIT );
    glClear( GL_DEPTH_BUFFER_BIT );
    glShadeModel(GL_FLAT);
@@ -175,27 +175,12 @@ static void init_model_proj(CUBE_STATE_T *state)
    glMatrixMode(GL_PROJECTION);
    glLoadIdentity();
 
-   hht = nearp * (float)tan(45.0 / 2.0 / 180.0 * M_PI);
+   hht = nearp * (float)tan(25.0 / 2.0 / 180.0 * M_PI);
    hwd = hht * (float)state->screen_width / (float)state->screen_height;
 
    glFrustumf(-hwd, hwd, -hht, hht, nearp, farp);
 
-   vertices = malloc(3 * u_sections * v_sections * sizeof(GLfloat));
-   int offs = 0;
-   for (int v = 0; v < v_sections;) {
-       for (int u = 0; u < u_sections; u++, offs += 3) {
-           vertices[offs + 0] = -10.0f + (20.0f / u_sections) * u;
-           vertices[offs + 1] = 3.0f * sin(0.341f * (u + v * 2));
-           vertices[offs + 2] = -10.0f + (20.0f / v_sections) * v;
-       }
-       v++;
-       for (int u = u_sections - 1; u >= 0; u--, offs += 3) {
-           vertices[offs + 0] = -10.0f + (20.0f / u_sections) * u;
-           vertices[offs + 1] = 3.0f * sin(0.341f * (u + v * 2));
-           vertices[offs + 2] = -10.0f + (20.0f / v_sections) * v;
-       }
-       v++;
-   }
+   vertices = malloc(u_sections * v_sections * sizeof(vec3));
 
    glEnableClientState( GL_VERTEX_ARRAY );
    glVertexPointer(3, GL_FLOAT, 0, vertices);
@@ -219,12 +204,26 @@ static void reset_model(CUBE_STATE_T *state)
    // reset model position
    glMatrixMode(GL_MODELVIEW);
    glLoadIdentity();
-   glTranslatef(0.f, 0.f, -50.f);
+   glTranslatef(0.f, 0.f, -500.f);
 
    // reset model rotation
-   state->rot_angle_x = 45.f; state->rot_angle_y = 30.f; state->rot_angle_z = 0.f;
-   state->rot_angle_x_inc = 0.5f; state->rot_angle_y_inc = 0.5f; state->rot_angle_z_inc = 0.f;
-   state->distance = 2.f;
+   state->rot_angle_x = 0.f; state->rot_angle_y = 0.f; state->rot_angle_z = 0.f;
+   state->rot_angle_x_inc = 0.5f; state->rot_angle_y_inc = 0.0f; state->rot_angle_z_inc = 0.f;
+   state->distance = 3.f;
+}
+
+static void set_vertices_plane(vec3 *out, float u, float v, float t) {
+    float x = 4.0f * u - 2.0f;
+    float y = 0.0f;
+    float z = 2.0f * v - 1.0f;
+
+    float dx = perlin_fbm_3d(1.3f * u, 0.05f * t       , 1.0f * v, 4);
+    float dy = perlin_fbm_3d(1.3f * u, 0.05f * t + 1.2f, 1.0f * v, 4);
+    float dz = perlin_fbm_3d(1.3f * u, 0.05f * t + 3.3f, 1.0f * v, 4);
+
+    (*out)[0] = x + 2.0f * dx;
+    (*out)[1] = y + 2.0f * dy;
+    (*out)[2] = z + 2.0f * dz;
 }
 
 /***********************************************************
@@ -244,22 +243,12 @@ static void update_model(CUBE_STATE_T *state)
     time += 1.0f / 60;
     int offs = 0;
     for (int v = 0; v < v_sections;) {
-        for (int u = 0; u < u_sections; u++, offs += 3) {
-            float x = -1.0f + (2.0f / u_sections) * u;
-            float z = -1.0f + (2.0f / v_sections) * v;
-            float y = 2.0f * perlin_fbm_3d(x, 0.3f * time, z, 3);
-            vertices[offs + 0] = x;
-            vertices[offs + 1] = y;
-            vertices[offs + 2] = z;
+        for (int u = 0; u < u_sections; u++, offs++) {
+            set_vertices_plane(&vertices[offs], 1.0f / u_sections * u, 1.0f / v_sections * v, time);
         }
         v++;
-        for (int u = u_sections - 1; u >= 0; u--, offs += 3) {
-            float x = -1.0f + (2.0f / u_sections) * u;
-            float z = -1.0f + (2.0f / v_sections) * v;
-            float y = 2.0f * perlin_fbm_3d(x, 0.3f * time, z, 3);
-            vertices[offs + 0] = x;
-            vertices[offs + 1] = y;
-            vertices[offs + 2] = z;
+        for (int u = u_sections - 1; u >= 0; u--, offs++) {
+            set_vertices_plane(&vertices[offs], 1.0f / u_sections * u, 1.0f / v_sections * v, time);
         }
         v++;
     }
@@ -310,7 +299,7 @@ static void redraw_scene(CUBE_STATE_T *state)
     glClear( GL_COLOR_BUFFER_BIT );
     glMatrixMode(GL_MODELVIEW);
 
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+    glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
     glDrawArrays(GL_LINE_STRIP, 0, u_sections * v_sections);
 
     eglSwapBuffers(state->display, state->surface);

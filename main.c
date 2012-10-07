@@ -18,7 +18,7 @@
    #define M_PI 3.141592654
 #endif
 	
-static const int u_sections = 40;
+static const int u_sections = 48;
 static const int v_sections = 32;
 
 typedef struct
@@ -217,9 +217,12 @@ static void set_vertices_plane(vec3 *out, float u, float v, float t) {
     float y = 0.0f;
     float z = 2.0f * v - 1.0f;
 
-    float dx = perlin_fbm_3d(1.3f * u, 0.05f * t       , 1.0f * v, 4);
-    float dy = perlin_fbm_3d(1.3f * u, 0.05f * t + 1.2f, 1.0f * v, 4);
-    float dz = perlin_fbm_3d(1.3f * u, 0.05f * t + 3.3f, 1.0f * v, 4);
+    u *= 1.3f;
+    t *= 0.05f;
+
+    float dx = perlin_fbm_3d(u, t       , v, 4);
+    float dy = perlin_fbm_3d(u, t + 1.2f, v, 4);
+    float dz = perlin_fbm_3d(u, t + 3.3f, v, 4);
 
     (*out)[0] = x + 2.0f * dx;
     (*out)[1] = y + 2.0f * dy;
@@ -241,16 +244,26 @@ static void update_model(CUBE_STATE_T *state)
 {
     static float time = 0.0f;
     time += 1.0f / 60;
+
     int offs = 0;
-    for (int v = 0; v < v_sections;) {
-        for (int u = 0; u < u_sections; u++, offs++) {
-            set_vertices_plane(&vertices[offs], 1.0f / u_sections * u, 1.0f / v_sections * v, time);
+    float u = 0.0f;
+    float v = 0.0f;
+    float du = 1.0f / u_sections;
+    float dv = 1.0f / v_sections;
+
+    for (int iv = 0; iv < v_sections; iv += 2) {
+        for (int iu = 0; iu < u_sections; iu++, offs++) {
+            set_vertices_plane(&vertices[offs], u, v, time);
+            u += du;
         }
-        v++;
-        for (int u = u_sections - 1; u >= 0; u--, offs++) {
-            set_vertices_plane(&vertices[offs], 1.0f / u_sections * u, 1.0f / v_sections * v, time);
+        v += dv;
+        u -= du;
+        for (int iu = 0; iu < u_sections; iu++, offs++) {
+            set_vertices_plane(&vertices[offs], u, v, time);
+            u -= du;
         }
-        v++;
+        v += dv;
+        u += du;
     }
 
 

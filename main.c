@@ -12,6 +12,7 @@
 #include "EGL/eglext.h"
 
 #include "linmath.h"
+#include "perlin.h"
 
 #ifndef M_PI
    #define M_PI 3.141592654
@@ -50,6 +51,8 @@ static void update_model(CUBE_STATE_T *state);
 static void exit_func(void);
 static volatile int terminate;
 static CUBE_STATE_T _state, *state=&_state;
+
+static GLfloat *vertices;
 
 
 /***********************************************************
@@ -177,7 +180,6 @@ static void init_model_proj(CUBE_STATE_T *state)
 
    glFrustumf(-hwd, hwd, -hht, hht, nearp, farp);
 
-   static GLfloat *vertices;
    vertices = malloc(3 * u_sections * v_sections * sizeof(GLfloat));
    int offs = 0;
    for (int v = 0; v < v_sections;) {
@@ -222,7 +224,7 @@ static void reset_model(CUBE_STATE_T *state)
    // reset model rotation
    state->rot_angle_x = 45.f; state->rot_angle_y = 30.f; state->rot_angle_z = 0.f;
    state->rot_angle_x_inc = 0.5f; state->rot_angle_y_inc = 0.5f; state->rot_angle_z_inc = 0.f;
-   state->distance = 40.f;
+   state->distance = 2.f;
 }
 
 /***********************************************************
@@ -238,10 +240,35 @@ static void reset_model(CUBE_STATE_T *state)
  ***********************************************************/
 static void update_model(CUBE_STATE_T *state)
 {
+    static float time = 0.0f;
+    time += 1.0f / 60;
+    int offs = 0;
+    for (int v = 0; v < v_sections;) {
+        for (int u = 0; u < u_sections; u++, offs += 3) {
+            float x = -1.0f + (2.0f / u_sections) * u;
+            float z = -1.0f + (2.0f / v_sections) * v;
+            float y = 2.0f * perlin_fbm_3d(x, 0.3f * time, z, 3);
+            vertices[offs + 0] = x;
+            vertices[offs + 1] = y;
+            vertices[offs + 2] = z;
+        }
+        v++;
+        for (int u = u_sections - 1; u >= 0; u--, offs += 3) {
+            float x = -1.0f + (2.0f / u_sections) * u;
+            float z = -1.0f + (2.0f / v_sections) * v;
+            float y = 2.0f * perlin_fbm_3d(x, 0.3f * time, z, 3);
+            vertices[offs + 0] = x;
+            vertices[offs + 1] = y;
+            vertices[offs + 2] = z;
+        }
+        v++;
+    }
+
+
    // update position
-   state->rot_angle_x = inc_and_wrap_angle(state->rot_angle_x, state->rot_angle_x_inc);
+   //state->rot_angle_x = inc_and_wrap_angle(state->rot_angle_x, state->rot_angle_x_inc);
    state->rot_angle_y = inc_and_wrap_angle(state->rot_angle_y, state->rot_angle_y_inc);
-   state->rot_angle_z = inc_and_wrap_angle(state->rot_angle_z, state->rot_angle_z_inc);
+   //state->rot_angle_z = inc_and_wrap_angle(state->rot_angle_z, state->rot_angle_z_inc);
 
    glLoadIdentity();
    // move camera back to see the cube

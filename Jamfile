@@ -1,7 +1,8 @@
 CC = gcc ;
 LINK = $(CC) ;
 
-CCFLAGS = -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -std=gnu1x -O2 -Wall ;
+CCFLAGS = -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -std=gnu1x -Wall ;
+OPTIM = -O2 ;
 LINKFLAGS = -L/opt/vc/lib -lEGL -lGLESv1_CM ;
 
-Main main : main.c ;
+Main main : main.c perlin.c ;
